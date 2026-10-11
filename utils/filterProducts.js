@@ -1,29 +1,47 @@
+// const searchProducts = (products, search) => {
+//   if (!search) return products;
+//   const searchedProducts = products.filter((p) =>
+//     p.title.toLowerCase().includes(search),
+//   );
+//   return searchedProducts;
+// };
+
+// const categoryProducts = (products, category) => {
+//   if (!category) return products;
+//   const categorizedProducts = products.filter((p) => p.category === category);
+//   return categorizedProducts;
+// };
+
+// const createQueryObject = (currentQuery, newQuery) => {
+//   if (newQuery.category === "all") {
+//     const { category, ...rest } = currentQuery;
+//     return rest;
+//   }
+//   if (newQuery.search === "") {
+//     const { search, ...rest } = currentQuery;
+//     return rest;
+//   }
+//   return {
+//     ...currentQuery, 
+//     ...newQuery
+//   }
+// };
+// export { searchProducts, categoryProducts ,createQueryObject };
+
 const searchProducts = (products, search) => {
-  if (!search) return products;
-  const searchedProducts = products.filter((p) =>
-    p.title.toLowerCase().includes(search),
-  );
-  return searchedProducts;
-};
+  if (!search) return products
+
+  return products.filter((product) =>
+    product.title.toLowerCase().includes(search.toLowerCase())
+  )
+}
 
 const categoryProducts = (products, category) => {
-  if (!category) return products;
-  const categorizedProducts = products.filter((p) => p.category === category);
-  return categorizedProducts;
-};
+  if (!category) return products
 
-const createQueryObject = (currentQuery, newQuery) => {
-  if (newQuery.category === "all") {
-    const { category, ...rest } = currentQuery;
-    return rest;
-  }
-  if (newQuery.search === "") {
-    const { search, ...rest } = currentQuery;
-    return rest;
-  }
-  return {
-    ...currentQuery, 
-    ...newQuery
-  }
-};
-export { searchProducts, categoryProducts ,createQueryObject };
+  return products.filter(
+    (product) => product.category === category
+  )
+}
+
+export { searchProducts, categoryProducts }

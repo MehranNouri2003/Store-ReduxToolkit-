@@ -1,127 +1,185 @@
 "use client"
-import { useEffect, useRef, useState } from "react"
+
+import { useRef } from "react"
 import { useProducts } from "../../query/hooks/useProducts"
 import Card from "../module/Card"
-import { MdManageSearch, MdOutlineKeyboardArrowDown } from 'react-icons/md'
-import { categoryProducts, createQueryObject, searchProducts } from "../../utils/filterProducts"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Loader from "../module/Loader"
-
+import {
+  MdManageSearch,
+  MdOutlineKeyboardArrowDown,
+} from "react-icons/md"
+import {
+  categoryProducts,
+  searchProducts,
+} from "../../utils/filterProducts"
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation"
 
 function ProductsPage() {
   const { data, isLoading } = useProducts()
 
-  const [displayed, setDisplayed] = useState([])
-  const [search, setSearch] = useState("")
-  const [query, setQuery] = useState({})
-
-  const router = useRouter();
-  const pathname = usePathname();
-
+  const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
+
   const detailsRef = useRef(null)
+  const searchInputRef = useRef(null)
 
-  useEffect(() => {
-    setDisplayed(data)
-    const query = {}
-    const category = searchParams.get("category")
-    const search = searchParams.get("search")
+  const activeSearch = searchParams.get("search") || ""
+  const activeCategory = searchParams.get("category") || ""
 
-    if (category) query.category = category
-    if (search) query.search = search
-    if (data) setQuery(query)
+  const products = Array.isArray(data) ? data : []
 
-  }, [data])
+  const searchedProducts = searchProducts(
+    products,
+    activeSearch
+  )
 
-  useEffect(() => {
-    const params = new URLSearchParams()
+  const displayed = categoryProducts(
+    searchedProducts,
+    activeCategory
+  )
 
-    if (query.search) params.set("search", query.search);
-    else params.delete("search");
-    if (query.category) params.set("category", query.category);
-    else params.delete("category");
+  const updateURL = (updates) => {
+    const params = new URLSearchParams(searchParams.toString())
 
-    router.replace(`${pathname}?${params.toString()}`)
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value)
+      } else {
+        params.delete(key)
+      }
+    })
 
-    let finalProducts = searchProducts(data, query.search)
-    finalProducts = categoryProducts(finalProducts, query.category)
-    setDisplayed(finalProducts)
-    console.log(displayed)
-  }, [query])
+    const queryString = params.toString()
+
+    router.replace(
+      queryString ? `${pathname}?${queryString}` : pathname,
+      { scroll: false }
+    )
+  }
+
   const searchHandler = () => {
-    setQuery((query) => createQueryObject(query, { search }))
+    const value =
+      searchInputRef.current?.value.trim().toLowerCase() || ""
+
+    updateURL({ search: value })
   }
 
   const categoryHandler = (event) => {
-    const { tagName } = event.target
-    const category = event.target.innerText.toLowerCase()
-    if (tagName !== "LI") return
-  if (category === "all") {
-    detailsRef.current.open = false
-  }
-  console.log(category)
-    setQuery((query) => createQueryObject(query, { category }))
-  }
+    const item = event.target.closest("li[data-category]")
 
-  if (query.category) {
-    detailsRef.current.open = false
+    if (!item || !event.currentTarget.contains(item)) return
+
+    const category = item.dataset.category
+
+    updateURL({
+      category: category === "all" ? "" : category,
+    })
+
+    if (detailsRef.current) {
+      detailsRef.current.open = false
+    }
   }
 
   return (
-    <div className=' mx-2.5'>
-      <div >
-        <div className="mt-10 mb-2.5 flex gap-3 h-9">
+    <div className="mx-2.5">
+      <div>
+        <div className="mt-10 mb-2.5 flex h-9 gap-3">
           <input
-            className=" bg-white border-2 w-full sm:w-[30%] border-dashed border-orange outline-none rounded-[5px] text-[15px] placeholder:text-[#666] placeholder:text-[13px] p-1"
+            key={activeSearch}
+            ref={searchInputRef}
+            className="w-full rounded-[5px] border-2 border-dashed border-orange bg-white p-1 text-[15px] outline-none placeholder:text-[13px] placeholder:text-[#666] sm:w-[30%]"
             placeholder="Search..."
             type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
+            defaultValue={activeSearch}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                searchHandler()
+              }
+            }}
           />
-          <button className="bg-orange text-2xl text-white rounded-[5px] p-1 px-1.5 "
+
+          <button
+            type="button"
+            className="rounded-[5px] bg-orange px-1.5 p-1 text-2xl text-white"
             onClick={searchHandler}
+            aria-label="Search products"
           >
             <MdManageSearch />
           </button>
         </div>
 
-        <details className="group" ref={detailsRef} >
-          <summary className={`${query.category && "bg-orange!"} flex gap-1 items-center outline-none justify-center text-orange w-full px-2 py-1 rounded-md bg-white border-dashed border-orange border-2`}>
-            <MdOutlineKeyboardArrowDown className={` ${query.category && "text-white font-semibold!"}text-2xl transition-transform duration-300 transform group-open:rotate-180`} />
-            <span className={query.category && "font-semibold text-white"}> {query.category ? query.category : "Category"}</span>
+        <details className="group" ref={detailsRef}>
+          <summary
+            className={`flex w-full items-center justify-center gap-1 rounded-md border-2 border-dashed border-orange bg-white px-2 py-1 text-orange outline-none ${
+              activeCategory ? "bg-orange!" : ""
+            }`}
+          >
+            <MdOutlineKeyboardArrowDown
+              className={`transform text-2xl transition-transform duration-300 group-open:rotate-180 ${
+                activeCategory
+                  ? "font-semibold! text-white"
+                  : ""
+              }`}
+            />
+
+            <span
+              className={
+                activeCategory
+                  ? "font-semibold text-white"
+                  : ""
+              }
+            >
+              {activeCategory || "Category"}
+            </span>
           </summary>
-          <div className="  group-open:block transition-transform transform duration-300 ease-in-out border-2 border-dashed border-[#666] shadow-lg rounded-md mt-0.5 bg-white leading-8 text-[15px] font-semibold ">
-            <ul className='flex mb-2 flex-wrap mt-2.5 gap-1.5 *:px-1.5 justify-center *:border-amber-600 *:border-dashed *:rounded-md  *:border'
+
+          <div className="mt-0.5 rounded-md border-2 border-dashed border-[#666] bg-white text-[15px] leading-8 font-semibold shadow-lg">
+            <ul
+              className="mt-2.5 mb-2 flex flex-wrap justify-center gap-1.5 *:rounded-md *:border *:border-dashed *:border-amber-600 *:px-1.5"
               onClick={categoryHandler}
             >
-              <li >All</li>
-              <li >Electronics</li>
-              <li>Jewelery</li>
-              <li >Men's Clothing </li>
-              <li >Women's Clothing</li>
+              <li data-category="all">All</li>
+              <li data-category="electronics">Electronics</li>
+              <li data-category="jewelery">Jewelery</li>
+              <li data-category="men's clothing">
+                Men&apos;s Clothing
+              </li>
+              <li data-category="women's clothing">
+                Women&apos;s Clothing
+              </li>
             </ul>
           </div>
         </details>
       </div>
 
-      <div className="flex justify-center mt-5 ">
-        <ul className="w-fit sm:flex sm:flex-wrap justify-between ">
-          {isLoading && (<Loader />)}
-          {displayed?.map((p) => (
-            <li key={p.id}>
-              <Card data={p} />
-            </li>
-          ))
-          }
+      <div className="mt-5 flex justify-center">
+        <ul className="w-fit justify-between sm:flex sm:flex-wrap">
+          {isLoading && <Loader />}
 
-          {displayed?.length == 0  && (
-            <p className="bg-orange-300  p-2.5 rounded-2xl text-orange font-semibold">No results found !</p>
+          {!isLoading &&
+            displayed.map((product) => (
+              <li key={product.id}>
+                <Card data={product} />
+              </li>
+            ))}
+
+          {!isLoading && displayed.length === 0 && (
+            <li>
+              <p className="rounded-2xl bg-orange-300 p-2.5 font-semibold text-orange">
+                No results found!
+              </p>
+            </li>
           )}
         </ul>
-
       </div>
     </div>
   )
 }
 
 export default ProductsPage
+
